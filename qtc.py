@@ -4,7 +4,7 @@ try:
     from qgis.PyQt.QtWidgets import QAction
 except ImportError:
     from qgis.PyQt.QtGui import QAction
-from qgis.PyQt.QtGuil import QIcon
+from qgis.PyQt.QtGui import QIcon
 
 plugin_icon = QIcon(':/images/themes/default/mIconFieldTime.svg')
 

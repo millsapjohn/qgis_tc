@@ -55,10 +55,15 @@ class LaunchDialog(QDialog):
 
         self.radio_label = QLabel('Calculate TC for:')
         self.layer_button = QRadioButton('Entire Layer')
+        self.layer_button.setChecked(True)
+        self.layer_button.clicked.connect(self.setLayerVisibility)
         self.feature_button = QRadioButton('Single Feature')
+        self.feature_button.clicked.connect(self.setLayerVisibility)
         self.layer_box = QgsMapLayerComboBox()
         self.layer_box.setFilters(Qgis.LayerFilter.LineLayer)
         self.feature_box = QgsFeaturePickerWidget()
+        self.feature_box.setDisabled(True)
+        self.feature_box.setShowBrowserButtons(True)
         self.radio_layout = QHBoxLayout()
         self.radio_layout.addWidget(self.layer_button)
         self.radio_layout.addWidget(self.feature_button)
@@ -73,15 +78,24 @@ class LaunchDialog(QDialog):
 
         self.save_file_checkbox = QCheckBox('Save Results to File?')
         self.layout.addWidget(self.save_file_checkbox)
+        try:
+            self.save_file_checkbox.checkStateChanged.connect(self.setSaveVisibility)
+        except AttributeError:
+            self.save_file_checkbox.stateChanged.connect(self.setSaveVisibility)
         self.save_file_box = QLineEdit('Save File Location:')
+        self.save_file_box.setDisabled(True)
         self.save_file_button = QPushButton(text='...')
+        self.save_file_button.setDisabled(True)
+        self.save_file_button.clicked.connect(self.getSaveFile)
         self.save_file_layout = QHBoxLayout()
         self.save_file_layout.addWidget(self.save_file_box)
         self.save_file_layout.addWidget(self.save_file_button)
         self.layout.addLayout(self.save_file_layout)
 
         self.ok_button = QPushButton(text='Ok')
+        self.ok_button.clicked.connect(self.getValues)
         self.cancel_button = QPushButton(text='Cancel')
+        self.cancel_button.clicked.connect(self.close)
         self.ok_layout = QHBoxLayout()
         self.ok_layout.addWidget(self.ok_button)
         self.ok_layout.addWidget(self.cancel_button)
@@ -89,5 +103,21 @@ class LaunchDialog(QDialog):
 
     def getSaveFile(self):
         self.fn_dialog = QFileDialog()
-        self.filename = self.filename_dialog.getSaveFileName(self, 'Specify Save Location:', 'Text File (*.txt)')[0]
+        self.filename = self.fn_dialog.getSaveFileName(self, 'Specify Save Location:', '', 'Text File (*.txt)')[0]
         self.save_file_box.setText(self.filename)
+
+    def getValues(self):
+        self.success = True
+
+    def setLayerVisibility(self):
+        if self.layer_button.isChecked:
+            self.layer_box.setEnabled(True)
+            self.feature_box.setDisabled(True)
+        else:
+            self.layer_box.setDisabled(True)
+            self.feature_box.setEnabled(True)
+
+    def setSaveVisibility(self, state):
+        enabled = state == 2
+        self.save_file_box.setEnabled(enabled)
+        self.save_file_button.setEnabled(enabled)
