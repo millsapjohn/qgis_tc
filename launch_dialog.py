@@ -1,0 +1,93 @@
+from qgis.PyQt.QtWidgets import (
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton,
+    QLabel,
+    QFileDialog,
+    QCheckBox,
+    QLineEdit,
+    QDoubleSpinBox,
+    QComboBox,
+    QRadioButton,
+)
+from qgis.gui import (
+    QgsMapLayerComboBox,
+    QgsFeaturePickerWidget,
+)
+from qgis.core import Qgis
+from qgis.utils import iface
+
+
+class LaunchDialog(QDialog):
+    def __init__(self):
+        super().__init__()
+        self.iface = iface
+        self.success = False
+        self.initUI()
+
+    def initUI(self):
+        self.setWindowTitle('ToC Options')
+        self.layout = QVBoxLayout()
+        self.setLayout(self.layout)
+
+        self.raster_label = QLabel('Raster Layer')
+        self.raster_box = QgsMapLayerComboBox()
+        self.raster_box.setFilters(Qgis.LayerFilter.RasterLayer)
+        self.layout.addWidget(self.raster_label)
+        self.layout.addWidget(self.raster_box)
+
+        self.slope_label = QLabel('Minimum Slope:')
+        self.slope_box = QDoubleSpinBox()
+        self.slope_box.setDecimals(3)
+        self.slope_box.setMinimum(0.000)
+        self.slope_box.setSuffix(' ft/ft')
+        self.layout.addWidget(self.slope_label)
+        self.layout.addWidget(self.slope_box)
+
+        self.min_time_label = QLabel('Minimum Total Time of Concentration:')
+        self.min_time_box = QDoubleSpinBox()
+        self.min_time_box.setDecimals(2)
+        self.min_time_box.setMinimum(0.00)
+        self.min_time_box.setSuffix(' min')
+        self.layout.addWidget(self.min_time_label)
+        self.layout.addWidget(self.min_time_box)
+
+        self.radio_label = QLabel('Calculate TC for:')
+        self.layer_button = QRadioButton('Entire Layer')
+        self.feature_button = QRadioButton('Single Feature')
+        self.layer_box = QgsMapLayerComboBox()
+        self.layer_box.setFilters(Qgis.LayerFilter.LineLayer)
+        self.feature_box = QgsFeaturePickerWidget()
+        self.radio_layout = QHBoxLayout()
+        self.radio_layout.addWidget(self.layer_button)
+        self.radio_layout.addWidget(self.feature_button)
+        self.layout.addLayout(self.radio_layout)
+        self.layer_layout = QHBoxLayout()
+        self.layer_layout.addWidget(self.layer_box)
+        self.layer_layout.addWidget(self.feature_box)
+        self.layout.addLayout(self.layer_layout)
+
+        self.name_box = QLineEdit('Subbasin Name:')
+        self.layout.addWidget(self.min_time_box)
+
+        self.save_file_checkbox = QCheckBox('Save Results to File?')
+        self.layout.addWidget(self.save_file_checkbox)
+        self.save_file_box = QLineEdit('Save File Location:')
+        self.save_file_button = QPushButton(text='...')
+        self.save_file_layout = QHBoxLayout()
+        self.save_file_layout.addWidget(self.save_file_box)
+        self.save_file_layout.addWidget(self.save_file_button)
+        self.layout.addLayout(self.save_file_layout)
+
+        self.ok_button = QPushButton(text='Ok')
+        self.cancel_button = QPushButton(text='Cancel')
+        self.ok_layout = QHBoxLayout()
+        self.ok_layout.addWidget(self.ok_button)
+        self.ok_layout.addWidget(self.cancel_button)
+        self.layout.addLayout(self.ok_layout)
+
+    def getSaveFile(self):
+        self.fn_dialog = QFileDialog()
+        self.filename = self.filename_dialog.getSaveFileName(self, 'Specify Save Location:', 'Text File (*.txt)')[0]
+        self.save_file_box.setText(self.filename)
