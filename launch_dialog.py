@@ -8,15 +8,16 @@ from qgis.PyQt.QtWidgets import (
     QCheckBox,
     QLineEdit,
     QDoubleSpinBox,
-    QComboBox,
     QRadioButton,
 )
+from qgis.PyQt.QtGui import QIcon
 from qgis.gui import (
     QgsMapLayerComboBox,
-    QgsFeaturePickerWidget,
 )
 from qgis.core import Qgis
 from qgis.utils import iface
+
+select_icon = QIcon(':/images/themes/default/mActionSelectRectangle.svg')
 
 
 class LaunchDialog(QDialog):
@@ -42,6 +43,7 @@ class LaunchDialog(QDialog):
         self.slope_box.setDecimals(3)
         self.slope_box.setMinimum(0.000)
         self.slope_box.setSuffix(' ft/ft')
+        self.slope_box.setValue(0.005)
         self.layout.addWidget(self.slope_label)
         self.layout.addWidget(self.slope_box)
 
@@ -50,31 +52,32 @@ class LaunchDialog(QDialog):
         self.min_time_box.setDecimals(2)
         self.min_time_box.setMinimum(0.00)
         self.min_time_box.setSuffix(' min')
+        self.min_time_box.setValue(5.00)
         self.layout.addWidget(self.min_time_label)
         self.layout.addWidget(self.min_time_box)
 
         self.radio_label = QLabel('Calculate TC for:')
         self.layer_button = QRadioButton('Entire Layer')
         self.layer_button.setChecked(True)
-        self.layer_button.clicked.connect(self.setLayerVisibility)
         self.feature_button = QRadioButton('Single Feature')
-        self.feature_button.clicked.connect(self.setLayerVisibility)
         self.layer_box = QgsMapLayerComboBox()
         self.layer_box.setFilters(Qgis.LayerFilter.LineLayer)
-        self.feature_box = QgsFeaturePickerWidget()
-        self.feature_box.setDisabled(True)
-        self.feature_box.setShowBrowserButtons(True)
+        self.select_button = QPushButton(icon=select_icon, text='Select Feature')
+        self.select_button.setDisabled(True)
+        self.feature_button.toggled.connect(self.setFeatureVisibility)
         self.radio_layout = QHBoxLayout()
         self.radio_layout.addWidget(self.layer_button)
         self.radio_layout.addWidget(self.feature_button)
         self.layout.addLayout(self.radio_layout)
         self.layer_layout = QHBoxLayout()
         self.layer_layout.addWidget(self.layer_box)
-        self.layer_layout.addWidget(self.feature_box)
+        self.layer_layout.addWidget(self.select_button)
         self.layout.addLayout(self.layer_layout)
 
-        self.name_box = QLineEdit('Subbasin Name:')
-        self.layout.addWidget(self.min_time_box)
+        self.name_label = QLabel('Subbasin Name:')
+        self.name_box = QLineEdit()
+        self.layout.addWidget(self.name_label)
+        self.layout.addWidget(self.name_box)
 
         self.save_file_checkbox = QCheckBox('Save Results to File?')
         self.layout.addWidget(self.save_file_checkbox)
@@ -109,13 +112,13 @@ class LaunchDialog(QDialog):
     def getValues(self):
         self.success = True
 
-    def setLayerVisibility(self):
-        if self.layer_button.isChecked:
+    def setFeatureVisibility(self):
+        if self.select_button.isEnabled() is True:
+            self.select_button.setDisabled(True)
             self.layer_box.setEnabled(True)
-            self.feature_box.setDisabled(True)
         else:
+            self.select_button.setEnabled(True)
             self.layer_box.setDisabled(True)
-            self.feature_box.setEnabled(True)
 
     def setSaveVisibility(self, state):
         enabled = state == 2
