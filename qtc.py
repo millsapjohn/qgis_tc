@@ -13,6 +13,7 @@ class QTCPlugin:
     def __init__(self, iface):
         super().__init__()
         self.iface = iface
+        self.valid = True
 
     def initGui(self):
         self.launchAction = QAction(plugin_icon, 'Calculate TC')
@@ -28,3 +29,16 @@ class QTCPlugin:
         self.dlg.exec()
         if self.dlg.success is True:
             self.getVariables()
+            if self.valid:
+                self.runTool()
+
+    def getVariables(self):
+        self.raster = self.dlg.raster
+        self.rain = self.dlg.rain
+        self.min_slope = self.dlg.min_slope
+        self.min_time = self.dlg.min_time
+        if self.dlg.save_intended is True:
+            self.save_file = self.dlg.save_file
+            if self.save_file is None or self.save_file == "Save File Location:":
+                self.valid = False
+                self.iface.messageBar().pushMessage("No Save File Specified")

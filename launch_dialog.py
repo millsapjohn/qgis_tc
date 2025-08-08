@@ -38,6 +38,15 @@ class LaunchDialog(QDialog):
         self.layout.addWidget(self.raster_label)
         self.layout.addWidget(self.raster_box)
 
+        self.rain_label = QLabel('2yr, 24hr Rainfall:')
+        self.rain_box = QDoubleSpinBox()
+        self.rain_box.setDecimals(2)
+        self.rain_box.setMinimum(0.00)
+        self.rain_box.setSuffix(' in')
+        self.rain_box.setValue(4.14)
+        self.layout.addWidget(self.rain_label)
+        self.layout.addWidget(self.rain_box)
+        
         self.slope_label = QLabel('Minimum Slope:')
         self.slope_box = QDoubleSpinBox()
         self.slope_box.setDecimals(3)
@@ -46,7 +55,7 @@ class LaunchDialog(QDialog):
         self.slope_box.setValue(0.005)
         self.layout.addWidget(self.slope_label)
         self.layout.addWidget(self.slope_box)
-
+        
         self.min_time_label = QLabel('Minimum Total Time of Concentration:')
         self.min_time_box = QDoubleSpinBox()
         self.min_time_box.setDecimals(2)
@@ -55,29 +64,6 @@ class LaunchDialog(QDialog):
         self.min_time_box.setValue(5.00)
         self.layout.addWidget(self.min_time_label)
         self.layout.addWidget(self.min_time_box)
-
-        self.radio_label = QLabel('Calculate TC for:')
-        self.layer_button = QRadioButton('Entire Layer')
-        self.layer_button.setChecked(True)
-        self.feature_button = QRadioButton('Single Feature')
-        self.layer_box = QgsMapLayerComboBox()
-        self.layer_box.setFilters(Qgis.LayerFilter.LineLayer)
-        self.select_button = QPushButton(icon=select_icon, text='Select Feature')
-        self.select_button.setDisabled(True)
-        self.feature_button.toggled.connect(self.setFeatureVisibility)
-        self.radio_layout = QHBoxLayout()
-        self.radio_layout.addWidget(self.layer_button)
-        self.radio_layout.addWidget(self.feature_button)
-        self.layout.addLayout(self.radio_layout)
-        self.layer_layout = QHBoxLayout()
-        self.layer_layout.addWidget(self.layer_box)
-        self.layer_layout.addWidget(self.select_button)
-        self.layout.addLayout(self.layer_layout)
-
-        self.name_label = QLabel('Subbasin Name:')
-        self.name_box = QLineEdit()
-        self.layout.addWidget(self.name_label)
-        self.layout.addWidget(self.name_box)
 
         self.save_file_checkbox = QCheckBox('Save Results to File?')
         self.layout.addWidget(self.save_file_checkbox)
@@ -111,14 +97,16 @@ class LaunchDialog(QDialog):
 
     def getValues(self):
         self.success = True
-
-    def setFeatureVisibility(self):
-        if self.select_button.isEnabled() is True:
-            self.select_button.setDisabled(True)
-            self.layer_box.setEnabled(True)
+        if self.save_file_checkbox.isChecked() is True:
+            self.save_intended = True
         else:
-            self.select_button.setEnabled(True)
-            self.layer_box.setDisabled(True)
+            self.save_intended = False
+        self.raster = self.raster_box.currentLayer()
+        self.rain = self.rain_box.value()
+        self.min_slope = self.slope_box.value()
+        self.min_time = self.min_time_box.value()
+        self.save_file = self.save_file_box.text()
+        self.close()
 
     def setSaveVisibility(self, state):
         enabled = state == 2
