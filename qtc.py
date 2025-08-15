@@ -5,6 +5,7 @@ try:
 except ImportError:
     from qgis.PyQt.QtGui import QAction
 from qgis.PyQt.QtGui import QIcon
+from .map_tools.qtc_select_tool import QTCSelectTool
 
 plugin_icon = QIcon(':/images/themes/default/mIconFieldTime.svg')
 
@@ -30,7 +31,7 @@ class QTCPlugin:
         if self.dlg.success is True:
             self.getVariables()
             if self.valid:
-                self.runTool()
+                self.runSelectTool()
 
     def getVariables(self):
         self.raster = self.dlg.raster
@@ -42,3 +43,7 @@ class QTCPlugin:
             if self.save_file is None or self.save_file == "Save File Location:":
                 self.valid = False
                 self.iface.messageBar().pushMessage("No Save File Specified")
+
+    def runSelectTool(self):
+        self.select_tool = QTCSelectTool(self.iface.mapCanvas(), self.iface)
+        self.iface.mapCanvas().setMapTool(self.select_tool)
