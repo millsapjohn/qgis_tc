@@ -1,5 +1,5 @@
-from qgis.gui import QgsMapTool, QgsRubberBand
-from qgis.PyQt.QtGui import QCursor, QAction
+from qgis.gui import QgsMapTool, QgsRubberBand, QgsMapToolPan
+from qgis.PyQt.QtGui import QCursor, QAction, QColor
 from qgis.PyQt.QtCore import Qt, pyqtSignal, QPoint
 from qgis.PyQt.QtWidgets import (
     QLineEdit,
@@ -13,6 +13,7 @@ from qgis.core import (
     Qgis,
     QgsPoint,
     QgsPointXY,
+    QgsLineString,
 )
 
 
@@ -20,12 +21,18 @@ class QTCPointsTool(QgsMapTool):
     completedRequest = pyqtSignal(str)
     abandonedRequest = pyqtSignal(str)
 
-    def __init__(self, canvas, iface):
+    def __init__(self, canvas, iface, feature_list, raster):
         self.canvas = canvas
         self.iface = iface
+        self.feature_list = feature_list
+        self.raster = raster
+        self.feature = self.feature_list[0].getFeature(self.feature_list[1])
+        self.feature_geom = self.feature.geometry()
+        self.start_point = self.feature_geom.startPoint()
+        self.end_point = self.feature_geom.endPoint()
         QgsMapTool.__init__(self, self.canvas)
-        self.arrow_down_action = None
-        self.arrow_up_action = None
+        self.line_point = None
+        self.panTool = QgsMapToolPan(self.iface.mapCanvas())
 
     def activate(self):
         self.iface.messageBar().clearWidgets()
@@ -35,6 +42,8 @@ class QTCPointsTool(QgsMapTool):
         self.setCursor(self.cursor)
         self.point_band = QgsRubberBand(self.canvas, Qgis.GeometryType.Point)
         self.line_band = QgsRubberBand(self.canvas, Qgis.GeometryType.Line)
+        self.line_band.setStrokeColor(QColor(0, 18, 255))
+        self.point_band.setStrokeColor(QColor(0, 18, 255))
         self.hint_bar = QLineEdit()
         self.response_bar = QLineEdit()
         self.option_table = QTableWidget()
@@ -50,21 +59,6 @@ class QTCPointsTool(QgsMapTool):
                 (self.canvas.mouseLastXY().y() + 10),
             )
         )
-
-        if not self.arrow_down_action:
-            self.arrow_down_action = QAction(self.canvas)
-            self.arrow_down_action.setShortcut(Qt.Key_Down)
-            self.arrow_down_action.triggered.connect(self.handleDownArrow)
-            self.canvas.addAction(self.arrow_down_action)
-        elif self.arrow_down_action not in self.canvas.actions():
-            self.canvas.addAction(self.arrow_down_action)
-        if not self.arrow_up_action:
-            self.arrow_up_action = QAction(self.canvas)
-            self.arrow_up_action.setShortcut(Qt.Key_Up)
-            self.arrow_up_action.triggered.connect(self.handleUpArrow)
-            self.canvas.addAction(self.arrow_up_action)
-        elif self.arrow_up_action not in self.canvas.actions():
-            self.canvas.addAction(self.arrow_up_action)
 
     def on_map_tool_set(self, new_tool, old_tool):
         if new_tool == self:
@@ -82,21 +76,20 @@ class QTCPointsTool(QgsMapTool):
         self.option_table.hide()
 
     def deactivate(self):
-        if self.arrow_down_action and self.arrow_down_action in self.canvas.actions():
-            self.arrow_down_action.triggered.disconnect(self.handleDownArrow)
-            self.canvas.removeAction(self.arrow_down_action)
-        if self.arrow_up_action and self.arrow_up_action in self.canvas.actions():
-            self.arrow_up_action.triggered.disconnect(self.handleUpArrow)
-            self.canvas.removeAction(self.arrow_up_action)
-        self.completedRequest.emit("task complete")
         self.iface.messageBar().clearWidgets()
         self.point_band.reset()
         self.line_band.reset()
         self.hint_bar.hide()
         self.response_bar.hide()
         self.option_table.hide()
+        for layer in QgsProject.instance().layerTreeRoot().findLayers():
+            if isinstance(layer.layer(), QgsVectorLayer):
+                ids = layer.layer().selectedFeatureIds()
+                for id in ids:
+                    layer.layer().deselect(id)
         QgsMapTool.deactivate(self)
         self.deactivated.emit()
+        self.iface.mapCanvas().setMapTool(self.panTool)
 
     def keyPressEvent(self, e):
         match e.key():
@@ -108,10 +101,15 @@ class QTCPointsTool(QgsMapTool):
                 self.deactivate()
 
     def canvasPressEvent(self, e):
-        pass
+        self.point_band.addPoint(self.line_point)
 
     def canvasMoveEvent(self, e):
         mouse_point = QgsPointXY(
             e.mapPoint().x(),
             e.mapPoint().y()
         )
+        feature_geom = self.feature.geometry()
+        _, self.line_point, _, _ = feature_geom.closestSegmentWithContext(mouse_point)
+        band_line = QgsGeometry().fromPolylineXY([mouse_point, self.line_point])
+        self.line_band.reset()
+        self.line_band.addGeometry(band_line)

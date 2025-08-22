@@ -45,5 +45,5 @@ class QTCPlugin:
                 self.iface.messageBar().pushMessage("No Save File Specified")
 
     def runSelectTool(self):
-        self.select_tool = QTCSelectTool(self.iface.mapCanvas(), self.iface)
+        self.select_tool = QTCSelectTool(self.iface.mapCanvas(), self.iface, self.raster)
         self.iface.mapCanvas().setMapTool(self.select_tool)

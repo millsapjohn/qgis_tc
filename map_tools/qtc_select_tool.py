@@ -9,17 +9,18 @@ from qgis.core import (
     Qgis,
     QgsLineString
 )
+from .qtc_points_tool import QTCPointsTool
 
 
 class QTCSelectTool(QgsMapTool):
-    completedRequest = pyqtSignal(list)
-    abandonedRequest = pyqtSignal(str)
 
-    def __init__(self, canvas, iface):
+    def __init__(self, canvas, iface, raster):
         self.canvas = canvas
         self.iface = iface
+        self.raster = raster
         QgsMapTool.__init__(self, self.canvas)
         self.selfeature = []
+        self.points_tool = None
 
     def activate(self):
         self.iface.messageBar().pushMessage("Select TC Polyline:", duration=0)
@@ -42,18 +43,19 @@ class QTCSelectTool(QgsMapTool):
         self.iface.messageBar().pushMessage("Select TC Polyline:", duration=0)
 
     def deactivate(self):
-        self.completedRequest.emit("task complete")
         self.iface.messageBar().clearWidgets()
         QgsMapTool.deactivate(self)
         self.deactivated.emit()
+        try:
+            self.canvas.setMapTool(self.points_tool)
+        except:
+            pass
 
     def keyPressEvent(self, e):
         match e.key():
             case Qt.Key_Return:
-                self.abandonedRequest.emit("Request Abandoned")
                 self.deactivate()
             case Qt.Key_Escape:
-                self.abandonedRequest.emit("Request Abandoned")
                 self.deactivate()
 
     def canvasPressEvent(self, e):
@@ -85,7 +87,8 @@ class QTCSelectTool(QgsMapTool):
                         selected = [layer, feature.id()]
         if selected != []:
             self.selfeature = selected
-            self.completedRequest.emit(selected)
+            self.points_tool = QTCPointsTool(self.canvas, self.iface, self.selfeature, self.raster)
+            self.deactivate()
         else:
             pass
 
