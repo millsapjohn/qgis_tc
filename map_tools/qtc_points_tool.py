@@ -15,6 +15,7 @@ from qgis.core import (
     QgsPointXY,
     QgsLineString,
 )
+from ..segment_data import SegmentData
 
 
 class QTCPointsTool(QgsMapTool):
@@ -29,7 +30,9 @@ class QTCPointsTool(QgsMapTool):
         self.feature = self.feature_list[0].getFeature(self.feature_list[1])
         self.feature_geom = self.feature.geometry()
         self.start_point = self.feature_geom.startPoint()
+        self.start_xy = QgsPointXY(self.start_point)
         self.end_point = self.feature_geom.endPoint()
+        self.end_xy = QgsPointXY(self.end_point)
         QgsMapTool.__init__(self, self.canvas)
         self.line_point = None
         self.panTool = QgsMapToolPan(self.iface.mapCanvas())
@@ -59,6 +62,30 @@ class QTCPointsTool(QgsMapTool):
                 (self.canvas.mouseLastXY().y() + 10),
             )
         )
+        self.r_provider = self.raster.dataProvider()
+        start_val, start_res = self.r_provider.sample(self.start_xy, 1)
+        end_val, end_res = self.r_provider.sample(self.end_xy, 1)
+        if start_res is False or end_res is False:
+            self.iface.messagebar().pushMessage("TC line outside raster boundary")
+            self.deactivate()
+        elif start_val == end_val:
+            self.iface.messageBar().pushMessage("no slope along TC line")
+            self.deactivate()
+        elif end_val > start_val:
+            vlayer = self.feature_list[0]
+            vlayer.startEditing()
+            nodes = self.feature_geom.asPolyline()
+            nodes.reverse()
+            new_geom = QgsGeometry.fromPolyline(nodes)
+            vlayer.changeGeometry(self.feature.id(), new_geom)
+            vlayer.commitChanges()
+        else:
+            pass
+
+        self.start_point = nodes[0]
+        self.end_point = nodes[-1]
+
+        self.point_band.addPoint(self.start_point)
 
     def on_map_tool_set(self, new_tool, old_tool):
         if new_tool == self:
@@ -113,3 +140,9 @@ class QTCPointsTool(QgsMapTool):
         band_line = QgsGeometry().fromPolylineXY([mouse_point, self.line_point])
         self.line_band.reset()
         self.line_band.addGeometry(band_line)
+        self.option_table.move(
+            QPoint(
+                e.pixelPoint().x() + 10,
+                e.pixelPoint().y() + 10,
+            )
+        )
