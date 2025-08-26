@@ -49,14 +49,27 @@ class QTCPointsTool(QgsMapTool):
         self.point_band.setStrokeColor(QColor(0, 18, 255))
         self.hint_bar = QLineEdit()
         self.response_bar = QLineEdit()
-        self.option_table = QTableWidget()
-        self.option_table.setColumnCount(1)
-        self.option_table.setFixedHeight(124)
-        self.option_table.setFixedWidth(118)
-        self.option_table.verticalHeader().setVisible(False)
-        self.option_table.horizontalHeader().setVisible(False)
-        self.option_table.setParent(self.canvas)
-        self.option_table.move(
+        self.regime_option_table = QTableWidget()
+        self.regime_option_table.setColumnCount(1)
+        self.regime_option_table.setFixedHeight(124)
+        self.regime_option_table.setFixedWidth(118)
+        self.regime_option_table.verticalHeader().setVisible(False)
+        self.regime_option_table.horizontalHeader().setVisible(False)
+        self.regime_option_table.setParent(self.canvas)
+        self.regime_option_table.move(
+            QPoint(
+                (self.canvas.mouseLastXY().x() + 10),
+                (self.canvas.mouseLastXY().y() + 10),
+            )
+        )
+        self.sheet_option_table = QTableWidget()
+        self.sheet_option_table.setColumnCount(1)
+        self.sheet_option_table.setFixedHeight(124)
+        self.sheet_option_table.setFixedWidth(118)
+        self.sheet_option_table.verticalHeader().setVisible(False)
+        self.sheet_option_table.horizontalHeader().setVisible(False)
+        self.sheet_option_table.setParent(self.canvas)
+        self.sheet_option_table.move(
             QPoint(
                 (self.canvas.mouseLastXY().x() + 10),
                 (self.canvas.mouseLastXY().y() + 10),
@@ -140,7 +153,13 @@ class QTCPointsTool(QgsMapTool):
         band_line = QgsGeometry().fromPolylineXY([mouse_point, self.line_point])
         self.line_band.reset()
         self.line_band.addGeometry(band_line)
-        self.option_table.move(
+        self.regime_option_table.move(
+            QPoint(
+                e.pixelPoint().x() + 10,
+                e.pixelPoint().y() + 10,
+            )
+        )
+        self.sheet_option_table.move(
             QPoint(
                 e.pixelPoint().x() + 10,
                 e.pixelPoint().y() + 10,
