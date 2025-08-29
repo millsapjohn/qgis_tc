@@ -27,6 +27,11 @@ class QTCPointsTool(QgsMapTool):
         self.iface = iface
         self.feature_list = feature_list
         self.raster = raster
+        self.arrow_down_action = None
+        self.arrow_up_action = None
+        self.regime_selected = None
+        self.cover_selected = None
+        self.is_calculating = False
         self.feature = self.feature_list[0].getFeature(self.feature_list[1])
         self.feature_geom = self.feature.geometry()
         self.start_point = self.feature_geom.startPoint()
@@ -51,10 +56,16 @@ class QTCPointsTool(QgsMapTool):
         self.response_bar = QLineEdit()
         self.regime_option_table = QTableWidget()
         self.regime_option_table.setColumnCount(1)
+        self.regime_option_table.setRowCount(4)
         self.regime_option_table.setFixedHeight(124)
         self.regime_option_table.setFixedWidth(118)
         self.regime_option_table.verticalHeader().setVisible(False)
         self.regime_option_table.horizontalHeader().setVisible(False)
+        self.regime_option_table.setItem(0, 0, QTableWidgetItem("Sheet Flow"))
+        self.regime_option_table.setItem(1, 0, QTableWidgetItem("Unpaved Shallow Concentrated Flow"))
+        self.regime_option_table.setItem(2, 0, QTableWidgetItem("Paved Shallow Concentrated Flow"))
+        self.regime_option_table.setItem(3, 0, QTableWidgetItem("Channelized Flow"))
+        self.regime_option_table.item(0, 0).setSelected(True)
         self.regime_option_table.setParent(self.canvas)
         self.regime_option_table.move(
             QPoint(
@@ -64,10 +75,21 @@ class QTCPointsTool(QgsMapTool):
         )
         self.sheet_option_table = QTableWidget()
         self.sheet_option_table.setColumnCount(1)
-        self.sheet_option_table.setFixedHeight(124)
+        self.sheet_option_table.setRowCount(10)
         self.sheet_option_table.setFixedWidth(118)
         self.sheet_option_table.verticalHeader().setVisible(False)
         self.sheet_option_table.horizontalHeader().setVisible(False)
+        self.sheet_option_table.setItem(0, 0, QTableWidgetItem("Concrete (0.015)"))
+        self.sheet_option_table.setItem(1, 0, QTableWidgetItem("Asphalt (0.016)"))
+        self.sheet_option_table.setItem(2, 0, QTableWidgetItem("Fallow no Residue (0.05)"))
+        self.sheet_option_table.setItem(3, 0, QTableWidgetItem("Cultivated Soil <20% Cover (0.06)"))
+        self.sheet_option_table.setItem(4, 0, QTableWidgetItem("Cultivated Soil >20% Cover (0.17)"))
+        self.sheet_option_table.setItem(5, 0, QTableWidgetItem("Short-Grass Prairie (0.15)"))
+        self.sheet_option_table.setItem(6, 0, QTableWidgetItem("Dense Grasses (0.24)"))
+        self.sheet_option_table.setItem(7, 0, QTableWidgetItem("Range (Natural) (0.13)"))
+        self.sheet_option_table.setItem(8, 0, QTableWidgetItem("Woods, Light Underbrush (0.4)"))
+        self.sheet_option_table.setItem(9, 0, QTableWidgetItem("Woods, Dense Underbrush (0.8)"))
+        self.sheet_option_table.item(5, 0).setSelected(True)
         self.sheet_option_table.setParent(self.canvas)
         self.sheet_option_table.move(
             QPoint(
@@ -100,6 +122,20 @@ class QTCPointsTool(QgsMapTool):
 
         self.point_band.addPoint(self.start_point)
 
+        if not self.arrow_down_action:
+            self.arrow_down_action = QAction(self.canvas)
+            self.arrow_down_action.setShortcut(Qt.Key_Down)
+            self.arrow_down_action.triggered.connect(self.handleDownArrow)
+            self.canvas.addAction(self.arrow_down_action)
+        elif self.arrow_down_action not in self.canvas.actions():
+            self.canvas.addAction(self.arrow_down_action)
+        if not self.arrow_up_action:
+            self.arrow_up_action = QAction(self.canvas)
+            self.arrow_up_action.setShortcut(Qt.Key_Up)
+            self.arrow_up_action.triggered.connect(self.handleUpArrow)
+        elif self.arrow_up_action not in self.canvas.actions():
+            self.canvas.addAction(self.arrow_up_action)
+
     def on_map_tool_set(self, new_tool, old_tool):
         if new_tool == self:
             pass
@@ -116,6 +152,12 @@ class QTCPointsTool(QgsMapTool):
         self.option_table.hide()
 
     def deactivate(self):
+        if self.arrow_down_action and self.arrow_down_action in self.canvas.actions():
+            self.arrow_down_action.triggered.disconnect(self.handleDownArrow)
+            self.canvas.removeAction(self.arrow_down_action)
+        if self.arrow_up_action and self.arrow_up_action in self.canvas.actions():
+            self.arrow_up_action.triggered.disconnect(self.handleUpArrow)
+            self.canvas.removeAction(self.arrow_up_action)
         self.iface.messageBar().clearWidgets()
         self.point_band.reset()
         self.line_band.reset()
@@ -134,14 +176,24 @@ class QTCPointsTool(QgsMapTool):
     def keyPressEvent(self, e):
         match e.key():
             case Qt.Key_Return:
-                self.abandonedRequest.emit("Request Abandoned")
-                self.deactivate()
+                if self.regime_option_table.isVisible is True:
+                    pass
+                elif self.sheet_option_table.isVisible is True:
+                    pass
+                else:
+                    self.abandonedRequest.emit("Request Abandoned")
+                    self.deactivate()
             case Qt.Key_Escape:
                 self.abandonedRequest.emit("Request Abandoned")
                 self.deactivate()
 
     def canvasPressEvent(self, e):
-        self.point_band.addPoint(self.line_point)
+        if self.is_calculating is True:
+            pass
+        else:
+            self.is_calculating = True
+            self.point_band.addPoint(self.line_point)
+            self.regime_option_table.show()
 
     def canvasMoveEvent(self, e):
         mouse_point = QgsPointXY(
@@ -165,3 +217,59 @@ class QTCPointsTool(QgsMapTool):
                 e.pixelPoint().y() + 10,
             )
         )
+
+    def handleUpArrow(self):
+        if self.regime_option_table.isHidden is False:
+            if self.regime_selected is None:
+                self.regime_selected = 0
+            else:
+                raw_regime = self.regime_selected - 1
+                if raw_regime < 0:
+                    self.regime_selected = 3
+                else:
+                    self.regime_selected = raw_regime
+            for i in range(4):
+                self.regime_option_table.item(i, 0).setSelected(False)
+            self.regime_option_table.item(self.regime_selected, 0).setSelected(True)
+        elif self.sheet_option_table.isHidden is False:
+            if self.cover_selected is None:
+                self.cover_selected = 0
+            else:
+                raw_cover = self.cover_selected - 1
+                if raw_cover < 0:
+                    self.cover_selected = 3
+                else:
+                    self.cover_selected = raw_cover
+            for i in range(4):
+                self.sheet_option_table.item(i, 0).setSelected(False)
+            self.sheet_option_table.item(self.cover_selected, 0).setSelected(True)
+        else:
+            pass
+
+    def handleDownArrow(self):
+        if self.regime_option_table.isHidden is False:
+            if self.regime_selected is None:
+                self.regime_selected = 0
+            else:
+                raw_regime = self.regime_selected + 1
+                if raw_regime > 4:
+                    self.regime_selected = 0
+                else:
+                    self.regime_selected = raw_regime
+            for i in range(4):
+                self.regime_option_table.item(i, 0).setSelected(False)
+            self.regime_option_table.item(self.regime_selected, 0).setSelected(True)
+        elif self.sheet_option_table.isHidden is False:
+            if self.cover_selected is None:
+                self.cover_selected = 0
+            else:
+                raw_cover = self.cover_selected + 1
+                if raw_cover > 4:
+                    self.cover_selected = 0
+                else:
+                    self.cover_selected = raw_cover
+            for i in range(4):
+                self.sheet_option_table.item(i, 0).setSelected(False)
+            self.sheet_option_table.item(self.cover_selected, 0).setSelected(True)
+        else:
+            pass
